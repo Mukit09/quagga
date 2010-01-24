@@ -71,14 +71,14 @@ prefix_match (const struct prefix *n, const struct prefix *p)
   int offset;
   int shift;
 
-  /* Set both prefix's head pointer. */
-  const u_char *np = (const u_char *)&n->u.prefix;
-  const u_char *pp = (const u_char *)&p->u.prefix;
-
   /* If n's prefix is longer than p's one return 0. */
   if (n->prefixlen > p->prefixlen)
     return 0;
 
+  /* Set both prefix's head pointer. */
+  const u_char *np = (const u_char *)&n->u.prefix;
+  const u_char *pp = (const u_char *)&p->u.prefix;
+  
   offset = n->prefixlen / PNBBY;
   shift =  n->prefixlen % PNBBY;
 
