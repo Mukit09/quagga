@@ -3533,6 +3533,7 @@ ospf_lsa_refresh (struct ospf *ospf, struct ospf_lsa *lsa)
   struct external_info *ei;
   struct ospf_lsa *new = NULL;
   assert (CHECK_FLAG (lsa->flags, OSPF_LSA_SELF));
+  assert (lsa->lock > 0);
 
   switch (lsa->data->type)
     {
@@ -3579,6 +3580,7 @@ ospf_refresher_register_lsa (struct ospf *ospf, struct ospf_lsa *lsa)
 {
   u_int16_t index, current_index;
   
+  assert (lsa->lock > 0);
   assert (CHECK_FLAG (lsa->flags, OSPF_LSA_SELF));
 
   if (lsa->refresh_list < 0)
@@ -3621,6 +3623,7 @@ ospf_refresher_register_lsa (struct ospf *ospf, struct ospf_lsa *lsa)
 void
 ospf_refresher_unregister_lsa (struct ospf *ospf, struct ospf_lsa *lsa)
 {
+  assert (lsa->lock > 0);
   assert (CHECK_FLAG (lsa->flags, OSPF_LSA_SELF));
   if (lsa->refresh_list >= 0)
     {
@@ -3674,6 +3677,8 @@ ospf_lsa_refresh_walker (struct thread *t)
 
       refresh_list = ospf->lsa_refresh_queue.qs [i];
       
+      assert (i >= 0);
+
       ospf->lsa_refresh_queue.qs [i] = NULL;
 
       if (refresh_list)
@@ -3685,8 +3690,8 @@ ospf_lsa_refresh_walker (struct thread *t)
 		           "refresh lsa %p (slot %d)", 
 		           inet_ntoa (lsa->data->id), lsa, i);
 	      
+	      assert (lsa->lock > 0);
 	      list_delete_node (refresh_list, node);
-	      ospf_lsa_unlock (&lsa); /* lsa_refresh_queue */
 	      lsa->refresh_list = -1;
 	      listnode_add (lsa_to_refresh, lsa);
 	    }
@@ -3699,7 +3704,11 @@ ospf_lsa_refresh_walker (struct thread *t)
   ospf->lsa_refresher_started = quagga_time (NULL);
 
   for (ALL_LIST_ELEMENTS (lsa_to_refresh, node, nnode, lsa))
-    ospf_lsa_refresh (ospf, lsa);
+    {
+      ospf_lsa_refresh (ospf, lsa);
+      assert (lsa->lock > 0);
+      ospf_lsa_unlock (&lsa); /* lsa_refresh_queue & temp for lsa_to_refresh*/
+    }
   
   list_delete (lsa_to_refresh);
   
